@@ -1,26 +1,36 @@
 import { useState, useEffect } from 'react'
 
+// ----------------------
+// Helper: Category Info
+// ----------------------
+const getCategoryInfo = (category) => {
+  switch(category) {
+    case 'Disease':
+      return { color: 'red', icon: '🦠', bgColor: 'bg-red-50', textColor: 'text-red-700' }
+    case 'Nutrient Deficiency':
+      return { color: 'yellow', icon: '🌿', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700' }
+    case 'Healthy':
+      return { color: 'green', icon: '✅', bgColor: 'bg-green-50', textColor: 'text-green-700' }
+    default:
+      return { color: 'gray', icon: '❓', bgColor: 'bg-gray-50', textColor: 'text-gray-700' }
+  }
+}
+
 export default function ResultsPage({ result, onNewDetection }) {
   const [showDetails, setShowDetails] = useState(false)
   const [copySuccess, setCopySuccess] = useState('')
 
-  // If no result, redirect to detection page
+  // Redirect to detection page if no result
   useEffect(() => {
-    if (!result) {
-      onNewDetection()
-    }
+    if (!result) onNewDetection()
   }, [result, onNewDetection])
 
   if (!result || !result.success) {
     return (
       <div className="container mx-auto px-6 py-12 text-center">
         <div className="text-6xl mb-6">😔</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          No Results Found
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Please upload a leaf image for analysis
-        </p>
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">No Results Found</h1>
+        <p className="text-gray-600 mb-8">Please upload a leaf image for analysis</p>
         <button
           onClick={onNewDetection}
           className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition"
@@ -33,21 +43,6 @@ export default function ResultsPage({ result, onNewDetection }) {
 
   const prediction = result.prediction
   const topPredictions = result.top_predictions || []
-
-  // Get category color and icon
-  const getCategoryInfo = (category) => {
-    switch(category) {
-      case 'Disease':
-        return { color: 'red', icon: '🦠', bgColor: 'bg-red-50', textColor: 'text-red-700' }
-      case 'Nutrient Deficiency':
-        return { color: 'yellow', icon: '🌿', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700' }
-      case 'Healthy':
-        return { color: 'green', icon: '✅', bgColor: 'bg-green-50', textColor: 'text-green-700' }
-      default:
-        return { color: 'gray', icon: '❓', bgColor: 'bg-gray-50', textColor: 'text-gray-700' }
-    }
-  }
-
   const categoryInfo = getCategoryInfo(prediction.category)
 
   // Copy results to clipboard
@@ -66,22 +61,14 @@ Prevention Tips: ${prediction.prevention.join('; ')}
     `.trim()
 
     navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopySuccess('Copied to clipboard!')
-        setTimeout(() => setCopySuccess(''), 2000)
-      })
-      .catch(() => {
-        setCopySuccess('Failed to copy')
-        setTimeout(() => setCopySuccess(''), 2000)
-      })
+      .then(() => { setCopySuccess('Copied to clipboard!'); setTimeout(() => setCopySuccess(''), 2000) })
+      .catch(() => { setCopySuccess('Failed to copy'); setTimeout(() => setCopySuccess(''), 2000) })
   }
 
   // Print results
-  const printResults = () => {
-    window.print()
-  }
+  const printResults = () => window.print()
 
-  // Share results (future feature)
+  // Share results
   const shareResults = () => {
     if (navigator.share) {
       navigator.share({
@@ -98,12 +85,8 @@ Prevention Tips: ${prediction.prevention.join('; ')}
     <div className="container mx-auto px-6 py-12 max-w-6xl">
       {/* Header */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-green-800 mb-4">
-          Analysis Results
-        </h1>
-        <p className="text-lg text-gray-600">
-          Detailed diagnosis and recommendations for your mango leaf
-        </p>
+        <h1 className="text-4xl font-bold text-green-800 mb-4">Analysis Results</h1>
+        <p className="text-lg text-gray-600">Detailed diagnosis and recommendations for your mango leaf</p>
       </div>
 
       {/* Main Results Card */}
@@ -117,15 +100,11 @@ Prevention Tips: ${prediction.prevention.join('; ')}
                 <span className={`text-sm font-semibold ${categoryInfo.textColor} uppercase tracking-wide`}>
                   {prediction.category}
                 </span>
-                <p className="text-xs text-gray-500 mt-1">
-                  Detected Condition
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Detected Condition</p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-gray-800">
-                {prediction.confidence}%
-              </div>
+              <div className="text-3xl font-bold text-gray-800">{prediction.confidence}%</div>
               <p className="text-xs text-gray-500">Confidence Score</p>
             </div>
           </div>
@@ -133,12 +112,7 @@ Prevention Tips: ${prediction.prevention.join('; ')}
 
         {/* Condition Name */}
         <div className="p-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
-            {prediction.class}
-          </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-            {prediction.description}
-          </p>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">{prediction.class}</h2>
 
           {/* Confidence Bar */}
           <div className="max-w-md mx-auto mb-8">
@@ -199,8 +173,6 @@ Prevention Tips: ${prediction.prevention.join('; ')}
               Analyze Another
             </button>
           </div>
-          
-          {/* Copy Success Message */}
           {copySuccess && (
             <div className="text-center mt-4">
               <div className="inline-flex items-center bg-green-100 text-green-700 px-4 py-2 rounded-lg">
@@ -211,21 +183,20 @@ Prevention Tips: ${prediction.prevention.join('; ')}
           )}
         </div>
 
-        {/* Detailed Information (Collapsible) */}
+        {/* Detailed Information */}
         {showDetails && (
           <div className="border-t p-8 animate-slideDown">
             {/* Symptoms */}
             <div className="mb-8">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">🔍</span>
-                Key Symptoms
+                <span className="mr-2">🔍</span> Key Symptoms
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
-                {prediction.symptoms.map((symptom, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4">
+                {prediction.symptoms.map((symptom, i) => (
+                  <div key={i} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-start">
                       <div className="bg-red-100 text-red-600 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">
-                        {index + 1}
+                        {i + 1}
                       </div>
                       <p className="text-gray-700">{symptom}</p>
                     </div>
@@ -237,12 +208,11 @@ Prevention Tips: ${prediction.prevention.join('; ')}
             {/* Treatment */}
             <div className="mb-8">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">💊</span>
-                Recommended Treatment
+                <span className="mr-2">💊</span> Recommended Treatment
               </h3>
               <div className="space-y-4">
-                {prediction.treatment.map((step, index) => (
-                  <div key={index} className="flex items-start bg-green-50 rounded-lg p-4">
+                {prediction.treatment.map((step, i) => (
+                  <div key={i} className="flex items-start bg-green-50 rounded-lg p-4">
                     <div className="bg-green-100 text-green-700 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">
                       ✓
                     </div>
@@ -255,12 +225,11 @@ Prevention Tips: ${prediction.prevention.join('; ')}
             {/* Prevention */}
             <div className="mb-8">
               <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <span className="mr-2">🛡️</span>
-                Prevention Strategies
+                <span className="mr-2">🛡️</span> Prevention Strategies
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
-                {prediction.prevention.map((strategy, index) => (
-                  <div key={index} className="bg-blue-50 rounded-lg p-4">
+                {prediction.prevention.map((strategy, i) => (
+                  <div key={i} className="bg-blue-50 rounded-lg p-4">
                     <div className="flex items-start">
                       <div className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">
                         🛡️
@@ -271,21 +240,6 @@ Prevention Tips: ${prediction.prevention.join('; ')}
                 ))}
               </div>
             </div>
-
-            {/* Additional Recommendations */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-              <h4 className="font-bold text-yellow-800 mb-3 flex items-center">
-                <span className="mr-2">💡</span>
-                Expert Recommendations
-              </h4>
-              <ul className="space-y-2 text-sm text-yellow-700">
-                <li>• Monitor affected trees weekly for progress</li>
-                <li>• Take follow-up photos to track treatment effectiveness</li>
-                <li>• Consult local agricultural expert for severe cases</li>
-                <li>• Consider soil testing for recurring nutrient issues</li>
-                <li>• Maintain treatment records for future reference</li>
-              </ul>
-            </div>
           </div>
         )}
       </div>
@@ -293,17 +247,16 @@ Prevention Tips: ${prediction.prevention.join('; ')}
       {/* Top Predictions */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-          <span className="mr-2">📊</span>
-          Top Predictions
+          <span className="mr-2">📊</span> Top Predictions
         </h3>
         <div className="space-y-4">
-          {topPredictions.map((pred, index) => {
-            const predCategory = pred.class === 'Healthy Leaf' ? 'Healthy' : 
-                               pred.class.includes('Deficiency') ? 'Nutrient Deficiency' : 'Disease'
+          {topPredictions.map((pred, i) => {
+            const predCategory = pred.class === 'Healthy' ? 'Healthy' :
+                                 pred.class.includes('Deficiency') ? 'Nutrient Deficiency' : 'Disease'
             const predInfo = getCategoryInfo(predCategory)
-            
+
             return (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition">
+              <div key={i} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition">
                 <div className="flex items-center">
                   <div className={`${predInfo.bgColor} rounded-full w-10 h-10 flex items-center justify-center mr-4`}>
                     <span className="text-lg">{predInfo.icon}</span>
@@ -314,7 +267,7 @@ Prevention Tips: ${prediction.prevention.join('; ')}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-gray-800">{pred.confidence.toFixed(1)}%</div>
+                  <div className="text-lg font-bold text-gray-800">{pred.confidence}%</div>
                   <div className="w-32 bg-gray-200 rounded-full h-2">
                     <div
                       className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full"
@@ -333,23 +286,17 @@ Prevention Tips: ${prediction.prevention.join('; ')}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 text-center">
           <div className="text-4xl mb-4">📸</div>
           <h4 className="font-bold text-green-800 mb-2">Take Progress Photos</h4>
-          <p className="text-sm text-gray-600">
-            Document treatment progress with weekly photos
-          </p>
+          <p className="text-sm text-gray-600">Document treatment progress with weekly photos</p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 text-center">
           <div className="text-4xl mb-4">📝</div>
           <h4 className="font-bold text-blue-800 mb-2">Keep Records</h4>
-          <p className="text-sm text-gray-600">
-            Maintain a log of treatments and responses
-          </p>
+          <p className="text-sm text-gray-600">Maintain a log of treatments and responses</p>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 text-center">
           <div className="text-4xl mb-4">👨‍🌾</div>
           <h4 className="font-bold text-purple-800 mb-2">Consult Experts</h4>
-          <p className="text-sm text-gray-600">
-            Seek professional advice for persistent issues
-          </p>
+          <p className="text-sm text-gray-600">Seek professional advice for persistent issues</p>
         </div>
       </div>
 
@@ -361,15 +308,6 @@ Prevention Tips: ${prediction.prevention.join('; ')}
         >
           Analyze Another Leaf
         </button>
-        <p className="text-gray-500 mt-4">
-          Or return to the{' '}
-          <button
-            onClick={onNewDetection}
-            className="text-green-600 hover:underline font-medium"
-          >
-            detection page
-          </button>
-        </p>
       </div>
     </div>
   )
