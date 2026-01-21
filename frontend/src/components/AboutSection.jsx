@@ -216,7 +216,7 @@ export default function AboutSection() {
             <div className="flex items-start p-4 bg-green-50 rounded-lg">
               <div className="text-3xl mr-4">📊</div>
               <div>
-                <h3 className="font-bold text-gray-800 mb-1">12 Classes Detected</h3>
+                <h3 className="font-bold text-gray-800 mb-1">8 Classes Detected</h3>
                 <p className="text-sm text-gray-600">
                   Identifies diseases, pests, nutrient deficiencies, and healthy leaves
                 </p>
