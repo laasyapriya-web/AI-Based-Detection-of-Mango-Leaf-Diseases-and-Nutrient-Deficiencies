@@ -1,295 +1,339 @@
-import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import jsPDF from 'jspdf'
 
-export default function ResultsPage({ result, onNewDetection }) {
-  const [showDetails, setShowDetails] = useState(false)
-  const [copySuccess, setCopySuccess] = useState('')
+function ResultsPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { result, imageUrl } = location.state || {}
+  const { t } = useTranslation()
 
   useEffect(() => {
-    if (!result) onNewDetection()
-  }, [result, onNewDetection])
-
-  if (!result || !result.success) {
-    return (
-      <div className="container mx-auto px-6 py-12 text-center">
-        <div className="text-6xl mb-6">😔</div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          No Results Found
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Please upload a leaf image for analysis
-        </p>
-        <button
-          onClick={onNewDetection}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition"
-        >
-          Go Back to Detection
-        </button>
-      </div>
-    )
-  }
-
-  const prediction = result.prediction
-  const topPredictions = result.top_predictions || []
-
-  const getCategoryInfo = (category) => {
-    switch(category) {
-      case 'Disease':
-        return { color: 'red', icon: '🦠', bgColor: 'bg-red-50', textColor: 'text-red-700' }
-      case 'Nutrient Deficiency':
-        return { color: 'yellow', icon: '🌿', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700' }
-      case 'Healthy':
-        return { color: 'green', icon: '✅', bgColor: 'bg-green-50', textColor: 'text-green-700' }
-      default:
-        return { color: 'gray', icon: '❓', bgColor: 'bg-gray-50', textColor: 'text-gray-700' }
+    if (!result) {
+      navigate('/detect')
     }
+  }, [result, navigate])
+
+  if (!result) {
+    return null
   }
 
-  const categoryInfo = getCategoryInfo(prediction.category)
+  const isHealthy = result.prediction.is_healthy
+  const confidence = (result.prediction.confidence * 100).toFixed(1)
+  const hasNutrientDeficiency = result.recommendations.nutrients && result.recommendations.nutrients.length > 0
 
-  const copyToClipboard = () => {
-    const text = `
-Mango Leaf Analysis Results:
-Condition: ${prediction.class}
-Confidence: ${prediction.confidence}%
-Category: ${prediction.category}
+  const downloadPDF = async () => {
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 20
+    let yPosition = margin
 
-Symptoms: ${prediction.symptoms.join(', ')}
+    // Title
+    pdf.setFontSize(22)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('MangoLeaf AI Diagnostic Report', pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 10
 
-Recommended Treatment: ${prediction.treatment.join('; ')}
+    // Date and Time
+    pdf.setFontSize(10)
+    pdf.setFont('helvetica', 'normal')
+    const reportDate = new Date().toLocaleString()
+    pdf.text(`Generated: ${reportDate}`, pageWidth / 2, yPosition, { align: 'center' })
+    yPosition += 15
 
-Recommended Nutrients: ${prediction.nutrients.join('; ')}
+    // Add Image
+    if (imageUrl) {
+      try {
+        const img = new Image()
+        img.src = imageUrl
+        await new Promise((resolve) => {
+          img.onload = resolve
+        })
+        
+        const imgWidth = 80
+        const imgHeight = (img.height * imgWidth) / img.width
+        const imgX = (pageWidth - imgWidth) / 2
+        
+        pdf.addImage(imageUrl, 'JPEG', imgX, yPosition, imgWidth, imgHeight)
+        yPosition += imgHeight + 15
+      } catch (error) {
+        console.error('Error adding image to PDF:', error)
+        yPosition += 10
+      }
+    }
 
-Prevention Tips: ${prediction.prevention.join('; ')}
-    `.trim()
+    // Disease Detection Section
+    pdf.setFontSize(16)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Disease Detection', margin, yPosition)
+    yPosition += 8
 
-    navigator.clipboard.writeText(text)
-      .then(() => setCopySuccess('Copied to clipboard!'))
-      .catch(() => setCopySuccess('Failed to copy'))
+    pdf.setFontSize(12)
+    pdf.setFont('helvetica', 'normal')
+    pdf.text(`Disease: ${result.prediction.disease}`, margin, yPosition)
+    yPosition += 7
+    pdf.text(`Confidence: ${confidence}%`, margin, yPosition)
+    yPosition += 7
+    pdf.text(`Status: ${isHealthy ? 'Healthy' : 'Disease Detected'}`, margin, yPosition)
+    yPosition += 12
 
-    setTimeout(() => setCopySuccess(''), 2000)
-  }
+    // Nutrient Analysis Section
+    pdf.setFontSize(16)
+    pdf.setFont('helvetica', 'bold')
+    pdf.text('Nutrient Analysis', margin, yPosition)
+    yPosition += 8
 
-  const printResults = () => window.print()
-
-  const shareResults = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Mango Leaf Analysis Results',
-        text: `My mango leaf analysis detected: ${prediction.class} (${prediction.confidence}% confidence)`,
-        url: window.location.href,
+    pdf.setFontSize(12)
+    pdf.setFont('helvetica', 'normal')
+    if (hasNutrientDeficiency) {
+      pdf.text('Detected Deficiencies:', margin, yPosition)
+      yPosition += 7
+      result.recommendations.nutrients.forEach((nutrient, idx) => {
+        pdf.text(`  ${idx + 1}. ${nutrient}`, margin + 5, yPosition)
+        yPosition += 6
       })
     } else {
-      alert('Sharing is not supported on this browser. You can copy the results instead.')
+      pdf.text('No nutrient deficiencies detected', margin, yPosition)
+      yPosition += 7
     }
+    yPosition += 8
+
+    // Treatment Recommendations Section
+    if (result.recommendations.remedies && result.recommendations.remedies.length > 0) {
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage()
+        yPosition = margin
+      }
+
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Treatment Recommendations', margin, yPosition)
+      yPosition += 8
+
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'normal')
+      result.recommendations.remedies.forEach((remedy, idx) => {
+        if (yPosition > pageHeight - 20) {
+          pdf.addPage()
+          yPosition = margin
+        }
+        const lines = pdf.splitTextToSize(`${idx + 1}. ${remedy}`, pageWidth - 2 * margin)
+        pdf.text(lines, margin, yPosition)
+        yPosition += lines.length * 6 + 3
+      })
+    }
+
+    // Top Predictions Section
+    if (result.top_predictions && result.top_predictions.length > 0) {
+      if (yPosition > pageHeight - 40) {
+        pdf.addPage()
+        yPosition = margin
+      }
+
+      yPosition += 8
+      pdf.setFontSize(16)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Top Predictions', margin, yPosition)
+      yPosition += 8
+
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'normal')
+      result.top_predictions.forEach((pred, idx) => {
+        const predConfidence = (pred.confidence * 100).toFixed(1)
+        pdf.text(`${idx + 1}. ${pred.disease}: ${predConfidence}%`, margin, yPosition)
+        yPosition += 6
+      })
+    }
+
+    // Footer
+    pdf.setFontSize(8)
+    pdf.setFont('helvetica', 'italic')
+    pdf.text('MangoLeaf AI - Powered by Deep Learning', pageWidth / 2, pageHeight - 10, { align: 'center' })
+
+    // Save PDF
+    pdf.save(`MangoLeaf_Report_${Date.now()}.pdf`)
   }
 
   return (
-    <div className="container mx-auto px-6 py-12 max-w-6xl">
-      {/* Header */}
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-green-800 mb-4">Analysis Results</h1>
-        <p className="text-lg text-gray-600">Detailed diagnosis and recommendations for your mango leaf</p>
-      </div>
-
-      {/* Main Results Card */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-        <div className={`${categoryInfo.bgColor} p-4 border-b`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="text-2xl mr-3">{categoryInfo.icon}</span>
-              <div>
-                <span className={`text-sm font-semibold ${categoryInfo.textColor} uppercase tracking-wide`}>
-                  {prediction.category}
-                </span>
-                <p className="text-xs text-gray-500 mt-1">Detected Condition</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-gray-800">{prediction.confidence}%</div>
-              <p className="text-xs text-gray-500">Confidence Score</p>
-            </div>
-          </div>
+    <div className="container mx-auto px-6 py-16">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-green-700 dark:text-green-400 mb-4 transition-colors duration-300">
+            {t('results.title')}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-300 text-lg transition-colors duration-300">
+            {t('results.subtitle')}
+          </p>
         </div>
 
-        <div className="p-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">{prediction.class}</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-8">{prediction.description}</p>
-
-          <div className="max-w-md mx-auto mb-8">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Confidence Level</span>
-              <span>{prediction.confidence}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div className="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full transition-all duration-1000" style={{ width: `${prediction.confidence}%` }}></div>
-            </div>
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>Low</span>
-              <span>Medium</span>
-              <span>High</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="border-t p-6 flex flex-wrap gap-4 justify-center">
-          <button onClick={() => setShowDetails(!showDetails)} className="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg flex items-center">
-            <span className="mr-2">{showDetails ? '▲' : '▼'}</span>
-            {showDetails ? 'Hide Details' : 'Show Full Details'}
-          </button>
-          <button onClick={copyToClipboard} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg flex items-center">
-            <span className="mr-2">📋</span>Copy Results
-          </button>
-          <button onClick={printResults} className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-lg flex items-center">
-            <span className="mr-2">🖨️</span>Print Report
-          </button>
-          <button onClick={shareResults} className="bg-pink-600 hover:bg-pink-700 text-white font-medium py-3 px-6 rounded-lg flex items-center">
-            <span className="mr-2">📤</span>Share
-          </button>
-          <button onClick={onNewDetection} className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg flex items-center">
-            <span className="mr-2">🔍</span>Analyze Another
-          </button>
-        </div>
-
-        {copySuccess && <div className="text-center mt-4"><div className="inline-flex items-center bg-green-100 text-green-700 px-4 py-2 rounded-lg"><span className="mr-2">✅</span>{copySuccess}</div></div>}
-
-        {/* Detailed Information */}
-        {showDetails && (
-          <div className="border-t p-8 animate-slideDown">
-            {/* Symptoms */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><span className="mr-2">🔍</span>Key Symptoms</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {prediction.symptoms.map((symptom, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-start">
-                      <div className="bg-red-100 text-red-600 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">{index + 1}</div>
-                      <p className="text-gray-700">{symptom}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Treatment */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><span className="mr-2">💊</span>Recommended Treatment</h3>
-              <div className="space-y-4">
-                {prediction.treatment.map((step, index) => (
-                  <div key={index} className="flex items-start bg-green-50 rounded-lg p-4">
-                    <div className="bg-green-100 text-green-700 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">✓</div>
-                    <p className="text-gray-700">{step}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Nutrients */}
-            {prediction.nutrients.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><span className="mr-2">🧪</span>Recommended Nutrients</h3>
-                <div className="flex flex-wrap gap-4">
-                  {prediction.nutrients.map((nutrient, index) => (
-                    <div key={index} className="bg-blue-50 rounded-lg p-4">
-                      <p className="text-gray-700">{nutrient}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              {t('results.uploadedImage')}
+            </h2>
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                alt="Analyzed leaf"
+                className="w-full rounded-lg shadow-lg"
+              />
             )}
+          </div>
 
-            {/* Prevention */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center"><span className="mr-2">🛡️</span>Prevention Strategies</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {prediction.prevention.map((strategy, index) => (
-                  <div key={index} className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex items-start">
-                      <div className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center mr-3 flex-shrink-0">🛡️</div>
-                      <p className="text-gray-700">{strategy}</p>
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                {t('results.diseaseDetection')}
+              </h2>
+              
+              <div className={`p-6 rounded-xl mb-6 ${
+                isHealthy 
+                  ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
+                  : 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
+              }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-4xl">{isHealthy ? '✅' : '⚠️'}</span>
+                  <span className={`text-sm font-semibold px-4 py-2 rounded-full ${
+                    isHealthy 
+                      ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' 
+                      : 'bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200'
+                  }`}>
+                    {confidence}% {t('results.confidence')}
+                  </span>
+                </div>
+                
+                <h3 className={`text-2xl font-bold mb-2 ${
+                  isHealthy 
+                    ? 'text-green-700 dark:text-green-400' 
+                    : 'text-red-700 dark:text-red-400'
+                }`}>
+                  {result.prediction.disease}
+                </h3>
+                
+                <p className={`${
+                  isHealthy 
+                    ? 'text-green-600 dark:text-green-300' 
+                    : 'text-red-600 dark:text-red-300'
+                }`}>
+                  {isHealthy ? t('results.healthy') : t('results.diseaseDetected')}
+                </p>
+              </div>
+
+              {result.top_predictions && result.top_predictions.length > 0 && (
+                <div>
+                  <h4 className="font-bold text-gray-900 dark:text-white mb-3">
+                    {t('results.topPredictions')}
+                  </h4>
+                  <div className="space-y-2">
+                    {result.top_predictions.map((pred, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                      >
+                        <span className="text-gray-700 dark:text-gray-300 font-medium">
+                          {pred.disease}
+                        </span>
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {(pred.confidence * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                {t('results.nutrientAnalysis')}
+              </h2>
+              
+              {hasNutrientDeficiency ? (
+                <div className="p-6 rounded-xl bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800">
+                  <div className="flex items-center mb-4">
+                    <span className="text-4xl mr-3">🌱</span>
+                    <h3 className="text-xl font-bold text-orange-700 dark:text-orange-400">
+                      {t('results.nutrientDeficiency')}
+                    </h3>
+                  </div>
+                  <p className="text-orange-600 dark:text-orange-300 mb-4">
+                    {t('results.nutrientDeficiencyDesc')}
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {result.recommendations.nutrients.map((nutrient, idx) => (
+                      <span
+                        key={idx}
+                        className="px-4 py-2 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 rounded-full font-semibold text-sm"
+                      >
+                        {nutrient}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-xl bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
+                  <div className="flex items-center">
+                    <span className="text-4xl mr-3">✓</span>
+                    <div>
+                      <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">
+                        {t('results.optimalNutrition')}
+                      </h3>
+                      <p className="text-green-600 dark:text-green-300">
+                        {t('results.noDeficiency')}
+                      </p>
                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {result.recommendations.remedies && result.recommendations.remedies.length > 0 && (
+          <div className="mb-12">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-all duration-300">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <span className="text-3xl mr-3">💊</span>
+                {t('results.treatmentRecommendations')}
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {result.recommendations.remedies.map((remedy, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800"
+                  >
+                    <span className="text-blue-600 dark:text-blue-400 mr-3 mt-1 font-bold">
+                      {idx + 1}.
+                    </span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {remedy}
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Additional Recommendations */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-              <h4 className="font-bold text-yellow-800 mb-3 flex items-center"><span className="mr-2">💡</span>Expert Recommendations</h4>
-              <ul className="space-y-2 text-sm text-yellow-700">
-                <li>• Monitor affected trees weekly for progress</li>
-                <li>• Take follow-up photos to track treatment effectiveness</li>
-                <li>• Consult local agricultural expert for severe cases</li>
-                <li>• Consider soil testing for recurring nutrient issues</li>
-                <li>• Maintain treatment records for future reference</li>
-              </ul>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Top Predictions */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center"><span className="mr-2">📊</span>Top Predictions</h3>
-        <div className="space-y-4">
-          {topPredictions.map((pred, index) => {
-            const predCategory = pred.class === 'Healthy Leaf' ? 'Healthy' : 
-                                 pred.class.includes('Deficiency') ? 'Nutrient Deficiency' : 'Disease'
-            const predInfo = getCategoryInfo(predCategory)
-            return (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition">
-                <div className="flex items-center">
-                  <div className={`${predInfo.bgColor} rounded-full w-10 h-10 flex items-center justify-center mr-4`}>
-                    <span className="text-lg">{predInfo.icon}</span>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-800">{pred.class}</h4>
-                    <p className="text-xs text-gray-500">{predCategory}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-gray-800">{pred.confidence.toFixed(1)}%</div>
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full" style={{ width: `${pred.confidence}%` }}></div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Next Steps */}
-      <div className="grid md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 text-center">
-          <div className="text-4xl mb-4">📸</div>
-          <h4 className="font-bold text-green-800 mb-2">Take Progress Photos</h4>
-          <p className="text-sm text-gray-600">Document treatment progress with weekly photos</p>
-        </div>
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 text-center">
-          <div className="text-4xl mb-4">📝</div>
-          <h4 className="font-bold text-blue-800 mb-2">Keep Records</h4>
-          <p className="text-sm text-gray-600">Maintain a log of treatments and responses</p>
-        </div>
-        <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 text-center">
-          <div className="text-4xl mb-4">👨‍🌾</div>
-          <h4 className="font-bold text-purple-800 mb-2">Consult Experts</h4>
-          <p className="text-sm text-gray-600">Seek professional advice for persistent issues</p>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="text-center">
-        <button onClick={onNewDetection} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-10 rounded-lg text-lg transition transform hover:scale-105 shadow-lg">
-          Analyze Another Leaf
-        </button>
-        <p className="text-gray-500 mt-4">
-          Or return to the{' '}
-          <button onClick={onNewDetection} className="text-green-600 hover:underline font-medium">
-            detection page
+        <div className="text-center space-y-4">
+          <button
+            onClick={downloadPDF}
+            className="px-12 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 mr-4"
+          >
+            📄 {t('results.downloadReport')}
           </button>
-        </p>
+          <button
+            onClick={() => navigate('/detect')}
+            className="px-12 py-4 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+          >
+            {t('results.analyzeAnother')}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
+
+export default ResultsPage
