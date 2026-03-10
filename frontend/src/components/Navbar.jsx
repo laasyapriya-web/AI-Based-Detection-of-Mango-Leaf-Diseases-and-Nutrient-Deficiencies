@@ -33,7 +33,9 @@ function Navbar() {
   const languages = {
     en: 'English',
     hi: 'हिंदी',
-    te: 'తెలుగు'
+    te: 'తెలుగు',
+    kn: 'ಕನ್ನಡ',
+    ta: 'தமிழ்'  
   }
 
   return (

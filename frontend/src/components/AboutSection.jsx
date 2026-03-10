@@ -1,69 +1,61 @@
+import { useTranslation } from 'react-i18next'  // Add this import
+
 function AboutSection() {
+  const { t } = useTranslation()  // Add this hook
+
   return (
     <div className="container mx-auto px-6 py-16">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-green-700 dark:text-green-400 mb-6 transition-colors duration-300">
-            About MangoLeaf AI
+            {t('about.title')}
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 transition-colors duration-300">
-            Empowering farmers with cutting-edge AI technology
+            {t('about.subtitle')}
           </p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 mb-12 transition-all duration-300">
           <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-6">
-            Our Mission
+            {t('about.ourMission')}
           </h2>
           <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed mb-6">
-            MangoLeaf AI is dedicated to revolutionizing agricultural practices by making
-            advanced disease detection technology accessible to farmers worldwide. Our
-            AI-powered platform helps identify mango leaf diseases early, enabling
-            timely intervention and protecting valuable crops.
+            {t('about.missionText1')}
           </p>
           <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
-            We believe that technology should serve agriculture, not replace it. Our goal
-            is to empower farmers with the tools they need to make informed decisions and
-            maintain healthy, productive orchards.
+            {t('about.missionText2')}
           </p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 mb-12 transition-all duration-300">
           <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-6">
-            Our Technology
+            {t('about.ourTechnology')}
           </h2>
           <div className="space-y-6">
             <div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                Deep Learning Models
+                {t('about.deepLearning')}
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Our system is powered by state-of-the-art convolutional neural networks
-                trained on thousands of mango leaf images. We use TensorFlow and Keras
-                to build models that can accurately identify 8 different diseases and
-                conditions with over 92% accuracy.
+                {t('about.deepLearningDesc')}
               </p>
             </div>
 
             <div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                Computer Vision
+                {t('about.computerVision')}
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Using OpenCV and advanced image processing techniques, we analyze leaf
-                patterns, discoloration, and other visual indicators to provide accurate
-                diagnoses in under 3 seconds.
+                {t('about.computerVisionDesc')}
               </p>
             </div>
 
             <div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-                User-Friendly Interface
+                {t('about.userFriendly')}
               </h3>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Built with React and modern web technologies, our platform is designed
-                to be intuitive and accessible, even for those with limited technical
-                knowledge. Works seamlessly on any device with camera support.
+                {t('about.userFriendlyDesc')}
               </p>
             </div>
           </div>
@@ -71,7 +63,7 @@ function AboutSection() {
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 mb-12 transition-all duration-300">
           <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-8 text-center">
-            Meet Our Team
+            {t('about.meetTeam')}
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -79,9 +71,9 @@ function AboutSection() {
                 👨‍💻
               </div>
               <h3 className="font-bold text-gray-800 dark:text-white text-lg">Gurajala Laasyapriya</h3>
-              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">BCA Student</p>
+              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">{t('about.teamRole')}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                ML Enthusiast
+                {t('about.teamDesc')}
               </p>
             </div>
 
@@ -90,9 +82,9 @@ function AboutSection() {
                 🌾
               </div>
               <h3 className="font-bold text-gray-800 dark:text-white text-lg">Katta Teena Reddy</h3>
-              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">BCA Student</p>
+              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">{t('about.teamRole')}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                ML Enthusiast
+                {t('about.teamDesc')}
               </p>
             </div>
 
@@ -101,9 +93,9 @@ function AboutSection() {
                 💻
               </div>
               <h3 className="font-bold text-gray-800 dark:text-white text-lg">Kovvuri Srivalli</h3>
-              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">BCA Student</p>
+              <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">{t('about.teamRole')}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                ML Enthusiast
+                {t('about.teamDesc')}
               </p>
             </div>
           </div>
@@ -111,7 +103,7 @@ function AboutSection() {
 
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 transition-all duration-300">
           <h2 className="text-3xl font-bold text-green-700 dark:text-green-400 mb-6">
-            Detected Conditions
+            {t('about.detectedConditions')}
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
